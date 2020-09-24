@@ -1,0 +1,1 @@
+﻿Заменить ссылки на проекты main_test, vinkekfish и cryptoprime на правильные локальные пути на репозиторий vinkekfish
