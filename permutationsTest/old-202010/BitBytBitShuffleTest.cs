@@ -6,7 +6,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -116,7 +115,7 @@ namespace permutationsTest
             var k = new Keccak_20200918();
             using (var state = new Keccak_abstract.KeccakStatesArray(k.State, false))
             {
-                byte* cur = msg;
+                // byte* cur = msg;
                 var blockLen = keccak.S_len2 << 3;
                 var buffer   = new byte[2048];
                 // var table    = tables[TableName];
@@ -203,7 +202,6 @@ namespace permutationsTest
             }
         }
 
-        //                     1  2  3  4  5    6   7   8   9  10  11  12 
         static readonly ushort[] valueToAdd = {1, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67};
         private static void GenBaseTable(int numberOfTable)
         {

@@ -17,7 +17,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -57,10 +57,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BitBytBitShuffleTest.cs" />
-    <Compile Include="BitBytBitKeccakShuffleTest.cs" />
-    <Compile Include="BitBytBitThreeFishPermutationTest.cs" />
-    <Compile Include="BitBytBitKeccakPermutationTest.cs" />
+    <Compile Include="PermutationDiffusionTest.cs" />
+    <Compile Include="old-202010\BitBytBitShuffleTest.cs" />
+    <Compile Include="old-202010\BitBytBitKeccakShuffleTest.cs" />
+    <Compile Include="old-202010\BitBytBitThreeFishPermutationTest.cs" />
+    <Compile Include="old-202010\BitBytBitKeccakPermutationTest.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
