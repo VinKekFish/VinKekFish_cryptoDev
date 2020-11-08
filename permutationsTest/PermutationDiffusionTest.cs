@@ -96,10 +96,39 @@ namespace permutationsTest
             }
 
             doPermutationTest(P, F, H, R);
+            
+            // Нормализуем матрицу
+            for (ushort i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    P[i, j] *= (float) size;
+                }
+            }
+
+            // Проверяем, что всё в пределах нормы
+            bool error = false;
+            for (ushort i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    if (P[i, j] > 1.001 || P[i, j] < 0.999)
+                    {
+                        this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});
+                        error = true;
+                        goto @break;
+                    }
+                }
+            }
+            @break:
 
             var sb = new StringBuilder();
-            var ss = size*1000f;
+            var ss = 1000f;
+
             sb.AppendLine("P martix * " + ss);
+            if (error)
+                sb.AppendLine("P[i, j] > 1.001 || P[i, j] < 0.99");
+
             for (ushort i = 0; i < size; i++)
             {
                 for (int j = 0; j < size; j++)
@@ -120,12 +149,12 @@ namespace permutationsTest
         private void doPermutationTest(float[,] P, float[,] F, float[,] H, ushort[] R)
         {
             // doPermutationTest_Keccak   (P, F, H, R);
-            const int k = 16;
+            const int k = 4;
             for (int i = 0; i < k; i++)
             {
                 doPermutationTest_Threefish(P, F, H, R);
                 //DoPermutation(R, tables["base67"]);
-                DoPermutation(R, tables["transpose128"]);
+                DoPermutation(R, tables["transpose200"]);
                 task.done = (i / (float) (k + 1)) * 100f;
             }
         }
@@ -147,14 +176,20 @@ namespace permutationsTest
             var size    = R.Length;
             var size128 = size / 128;
             var size256 = size128 / 2;
+            
+            var PH = new float [size, size]; // вспомогательный массив
+            // Работаем с массивом P
+            CopyToH(P, PH, 1f);
 
             for (int i = 0; i < size128; i++)
             {
-                ThreeFishImitation(P, F, h, R, i, getNumberFromRing(i + size256, size128), size128);
+                ThreeFishImitation(P, PH, F, h, R, i, getNumberFromRing(i + size256, size128), size128);
             }
+
+            CopyToH(PH, P, 1f);
         }
 
-        private void ThreeFishImitation(float[,] P, float[,] F, float[,] H, ushort[] R, int blockPosition, int keyPosition, int size128)
+        private void ThreeFishImitation(float[,] P, float[,] PH, float[,] F, float[,] H, ushort[] R, int blockPosition, int keyPosition, int size128)
         {
             // Работаем с массивом P
             // создать вспомогательный массив и скопировать из него столбец J (столбец с номером указанного байта)
@@ -166,14 +201,13 @@ namespace permutationsTest
             int startB = blockPosition * 128;
             int startK = keyPosition * 128;
 
-            // Работаем с массивом P
-            CopyToH(P, H, 1f);
+            CopyToH(PH, H,  1f);
             // MatrixToNull(H);
 
             // P[i, j] есть "вероятность" того, что на байт j будет оказано влияние от байта i
-            ProbabilityImitationForThreeFish(P, H, R, startB, startK);
+            ProbabilityImitationForThreeFish(P, PH, H, R, startB, startK);
 
-            CopyToH(H, P, 1f);
+            CopyToH(H, PH, 1f);
         }
 
         private void MatrixToNull(float[,] H)
@@ -187,7 +221,7 @@ namespace permutationsTest
             }
         }
 
-        private void ProbabilityImitationForThreeFish(float[,] P, float[,] H, ushort[] R, int startB, int startK)
+        private void ProbabilityImitationForThreeFish(float[,] P, float[,] PH, float[,] H, ushort[] R, int startB, int startK)
         {
             var kDiv = 1f / (256f);   // 256 значений всего участвует в данном преобразовании
 
@@ -216,7 +250,7 @@ namespace permutationsTest
                 for (int j = startB; j < startB + 128; j++)
                 for (int k = startB; k < startB + 128; k++)
                 {
-                    H[iR, GetByteNumber(k, R)] += P[iR, GetByteNumber(j, R)] * kDiv;
+                    H[iR, GetByteNumber(k, R)] += PH[iR, GetByteNumber(j, R)] * kDiv;
                 }
             }
         }
@@ -296,7 +330,7 @@ namespace permutationsTest
 
         private void GenBaseTable(int numberOfTable)
         {
-            var blockSize  = 64;
+            // var blockSize  = 64;
 
             var newTable = new ushort[size];
             var buffer   = new ushort[size];
