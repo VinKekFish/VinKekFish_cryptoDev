@@ -56,9 +56,11 @@ namespace permutationsTest
         {
             GenerateTables();
 
+            var po = new ParallelOptions();
+            po.MaxDegreeOfParallelism = Environment.ProcessorCount;
             Parallel.ForEach
             (
-                sources,
+                sources, po,
                 delegate (SourceTask task)
                 {
                     /*
@@ -129,7 +131,7 @@ namespace permutationsTest
 
                     // Проверяем, что всё в пределах нормы
                     bool error = false;
-                    float Min = float.MinValue, Max = float.MaxValue;
+                    float Max = float.MinValue, Min = float.MaxValue;
                     for (ushort i = 0; i < size; i++)
                     {
                         for (int j = 0; j < size; j++)
@@ -143,10 +145,10 @@ namespace permutationsTest
                                 // goto @break;
                             }
 
-                            if (P[i, j] > Min)
-                                Min = P[i, j];
-                            if (P[i, j] < Max)
+                            if (P[i, j] > Max)
                                 Max = P[i, j];
+                            if (P[i, j] < Min)
+                                Min = P[i, j];
                         }
                     }
                     // @break:
