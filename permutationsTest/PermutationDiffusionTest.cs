@@ -84,10 +84,12 @@ namespace permutationsTest
                     str += "keccak";
 
                 if (useThreeFish)
+                {
                     if (useKeccak)
                         str += "+threefish";
                     else
                         str += "threefish";
+                }
 
                 return str;
             }
@@ -95,8 +97,8 @@ namespace permutationsTest
             public static IEnumerable<CipherOptions> getAllNotEmptyCiphers()
             {
                 yield return new CipherOptions(true,  false);
-                yield return new CipherOptions(true,  true);
                 yield return new CipherOptions(false, true);
+                yield return new CipherOptions(true,  true);
             }
         }
 
@@ -186,8 +188,8 @@ namespace permutationsTest
                         {
                             if (P[i, j] > 1.001 || P[i, j] < 0.999)
                             {
-                                if (!error)
-                                    this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});
+                                /*if (!error)
+                                    this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
 
                                 error = true;
                                 // goto @break;
@@ -219,7 +221,8 @@ namespace permutationsTest
                         sb.AppendLine();
                     }
 
-                    File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
+                    // File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
+                    File.WriteAllText($"matrix/r-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", $"Min = {Min}, Max = {Max}");
                 }
             );  // The end of Parallel.foreach sources running
         }
@@ -384,7 +387,7 @@ namespace permutationsTest
 
         private void KeccakImitation(float[,] P, float[,] PH, float[,] H, ushort[] R, int blockPosition, int size128)
         {
-            int startB = blockPosition * 128;
+            int startB = blockPosition * 200;
 
             CopyToH(PH, H,  1f);
             // MatrixToNull(H);
