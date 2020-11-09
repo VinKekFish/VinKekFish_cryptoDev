@@ -29,13 +29,15 @@ namespace permutationsTest
 
         public new class SourceTask: MultiThreadTest<SourceTask>.SourceTask
         {
-            public readonly string TableName = null;
-            public readonly int    IterationCount;
+            public readonly string        TableName = null;
+            public readonly int           IterationCount;
+            public readonly CipherOptions options;
 
-            public SourceTask(int iterationCount, string TableName)
+            public SourceTask(int iterationCount, CipherOptions opt, string TableName)
             {
                 this.TableName      = TableName;
                 this.IterationCount = iterationCount;
+                this.options        = opt;
             }
         }
 
@@ -43,12 +45,58 @@ namespace permutationsTest
         {
             public override IEnumerable<SourceTask> GetIterator()
             {
-                for (int i = 1; i <= 8; i++)
+                foreach (var opt in CipherOptions.getAllNotEmptyCiphers())
                 {
-                    yield return new SourceTask(i, "base131");
-                    yield return new SourceTask(i, "transpose128");
-                    yield return new SourceTask(i, "transpose200");
+                    for (int i = 1; i <= 8; i++)
+                    {
+                        yield return new SourceTask(i, opt, "base131");
+                        yield return new SourceTask(i, opt, "base199");
+                        yield return new SourceTask(i, opt, "base211");
+                        yield return new SourceTask(i, opt, "base233");
+                        yield return new SourceTask(i, opt, "transpose128");
+                        yield return new SourceTask(i, opt, "transpose200");
+                        yield return new SourceTask(i, opt, "transpose256");
+                        yield return new SourceTask(i, opt, "transpose384");
+                        yield return new SourceTask(i, opt, "transpose387");
+                    }
                 }
+            }
+        }
+
+        public class CipherOptions
+        {
+            public readonly bool useThreeFish = true;
+            public readonly bool useKeccak    = true;
+
+            public bool useThreeFishOnly  { get =>  useThreeFish && !useKeccak; }
+            public bool useKeccakOnly     { get => !useThreeFish &&  useKeccak; }
+
+            public CipherOptions(bool useThreeFish = true, bool useKeccak = true)
+            {
+                this.useThreeFish = useThreeFish;
+                this.useKeccak    = useKeccak;
+            }
+
+            public override string ToString()
+            {
+                var str = "";
+                if (useKeccak)
+                    str += "keccak";
+
+                if (useThreeFish)
+                    if (useKeccak)
+                        str += "+threefish";
+                    else
+                        str += "threefish";
+
+                return str;
+            }
+
+            public static IEnumerable<CipherOptions> getAllNotEmptyCiphers()
+            {
+                yield return new CipherOptions(true,  false);
+                yield return new CipherOptions(true,  true);
+                yield return new CipherOptions(false, true);
             }
         }
 
@@ -118,7 +166,7 @@ namespace permutationsTest
                         }
                     }
 
-                    doPermutationTest(P, H, R, task.IterationCount, task.TableName);
+                    doPermutationTest(P, H, R, task.IterationCount, task.TableName, task.options);
             
                     // Нормализуем матрицу
                     for (ushort i = 0; i < size; i++)
@@ -171,19 +219,48 @@ namespace permutationsTest
                         sb.AppendLine();
                     }
 
-                    File.WriteAllText($"matrix-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
+                    File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
                 }
             );  // The end of Parallel.foreach sources running
         }
 
-        private void doPermutationTest(float[,] P, float[,] H, ushort[] R, int k, string TableName)
+        private void doPermutationTest(float[,] P, float[,] H, ushort[] R, int k, string TableName, CipherOptions options)
         {
             // doPermutationTest_Keccak   (P, F, H, R);
-            for (int i = 0; i < k; i++)
+            if (options.useThreeFishOnly)
             {
-                doPermutationTest_Threefish(P, H, R);
-                //DoPermutation(R, tables["base67"]);
-                DoPermutation(R, tables[TableName]);
+                for (int i = 0; i < k; i++)
+                {
+                    doPermutationTest_Threefish(P, H, R);
+                    DoPermutation(R, tables[TableName]);
+                }
+            }
+            else
+            if (options.useKeccakOnly)
+            {
+                for (int i = 0; i < k; i++)
+                {
+                    doPermutationTest_Keccak(P, H, R);
+                    DoPermutation(R, tables[TableName]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < k; i++)
+                {
+                    if (options.useKeccak)
+                    {
+                        doPermutationTest_Keccak(P, H, R);
+                        DoPermutation(R, tables[TableName]);
+                    }
+
+                    if (options.useThreeFish)
+                    {
+                        doPermutationTest_Threefish(P, H, R);
+                        // DoPermutation(R, tables["transpose387"]);
+                        DoPermutation(R, tables["transpose128"]);
+                    }
+                }
             }
         }
 
@@ -196,6 +273,17 @@ namespace permutationsTest
                 i -= ringModulo;
 
             return i;
+        }
+        
+        private void CopyToH(float[,] P, float[,] H, float divide)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    H[i, j] = P[i, j] / divide;
+                }
+            }
         }
 
         /// <summary>Осуществляет имитацию преобразования Threefish (изменяет статистику)</summary>
@@ -219,13 +307,6 @@ namespace permutationsTest
 
         private void ThreeFishImitation(float[,] P, float[,] PH, float[,] H, ushort[] R, int blockPosition, int keyPosition, int size128)
         {
-            // Работаем с массивом P
-            // создать вспомогательный массив и скопировать из него столбец J (столбец с номером указанного байта)
-            // при копировании сразу разделить содержимое массива на два, т.к. влияние теперь будет и от других байтов
-            // для блока размером blockSize байтов
-            //     для каждого байта I из блока
-            //         сложить всопогательный массив столбца J со значениями из массива I, но делёными на blockSize и ещё на два
-
             int startB = blockPosition * 128;
             int startK = keyPosition * 128;
 
@@ -283,22 +364,60 @@ namespace permutationsTest
             }
         }
 
-        private void CopyToH(float[,] P, float[,] H, float divide)
+        private void doPermutationTest_Keccak(float[,] P, float[,] H, ushort[] R)
         {
+            var size    = R.Length;
+            var size200 = size / 200;
+            var size400 = size200 / 2;
+            
+            var PH = new float [size, size]; // вспомогательный массив
+            // Работаем с массивом P
+            CopyToH(P, PH, 1f);
+
+            for (int i = 0; i < size200; i++)
+            {
+                KeccakImitation(P, PH, H, R, i, size200);
+            }
+
+            CopyToH(PH, P, 1f);
+        }
+
+        private void KeccakImitation(float[,] P, float[,] PH, float[,] H, ushort[] R, int blockPosition, int size128)
+        {
+            int startB = blockPosition * 128;
+
+            CopyToH(PH, H,  1f);
+            // MatrixToNull(H);
+
+            // P[i, j] есть "вероятность" того, что на байт j будет оказано влияние от байта i
+            ProbabilityImitationForKeccak(P, PH, H, R, startB);
+
+            CopyToH(H, PH, 1f);
+        }
+
+        private void ProbabilityImitationForKeccak(float[,] P, float[,] PH, float[,] H, ushort[] R, int startB)
+        {
+            var kDiv = 1f / (200f);   // 200 значений всего участвует в данном преобразовании
+
             for (int i = 0; i < size; i++)
             {
-                for (int j = 0; j < size; j++)
+                var iR = GetByteNumber(i, R);
+                for (int k = startB; k < startB + 200; k++)
                 {
-                    H[i, j] = P[i, j] / divide;
+                    H[iR, GetByteNumber(k, R)] = 0f;
+                }
+            }
+
+            for (int i = 0; i < size; i++)
+            {
+                var iR = GetByteNumber(i, R);
+                for (int j = startB; j < startB + 200; j++)
+                for (int k = startB; k < startB + 200; k++)
+                {
+                    H[iR, GetByteNumber(k, R)] += PH[iR, GetByteNumber(j, R)] * kDiv;
                 }
             }
         }
-
-        private void doPermutationTest_Keccak(float[,] P, float[,] PH, float[,] H, ushort[] R, int startB)
-        {
-            
-        }
-
 
         /// <summary>Возвращает номер байта, находящегося на позиции positionInArray</summary>
         /// <param name="positionInArray">Позиция в массиве, для которой нужно узнать, какой там байт располагается</param>
@@ -339,6 +458,9 @@ namespace permutationsTest
         {
             lock (tables)
             {
+                if (!Directory.Exists("matrix"))
+                    Directory.CreateDirectory("matrix");
+
                 if (tables.Count > 0)
                     return;
 
@@ -347,12 +469,15 @@ namespace permutationsTest
 
                 GenTransposeTable(128);
                 GenTransposeTable(200);
+                GenTransposeTable(256);
+                GenTransposeTable(384); // Чтобы значения брались не по порядку, но кратно 128-ми
+                GenTransposeTable(256+131); // 387
             }
         }
 
         // 2 и 5 исключены, т.к. являются простыми множителями размера 25600 криптографического состояния
         // Кроме этого, 2 никогда не даёт приращения младшему биту, что криптографически не очень верно
-        public static readonly ushort[] valueToAdd = {1, 3, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137};
+        public static readonly ushort[] valueToAdd = {1, 3, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233};
         public readonly int sizeInBits;
         public readonly int size;
 
@@ -453,6 +578,37 @@ namespace permutationsTest
             // То есть, если у нас есть массивы old и new, то
             // new[i] = old[newTable[i]]
             tables.Add("transpose" + blockSize, newTable);
+
+            // if (blockSize == 387)
+            {
+                // Мы хотим найти все значения, которые есть в выходном результате (первые 512-ть битов)
+                // и отобразить как они попадают в исходные (до перестановок) блоки
+                var sb = new StringBuilder();
+                for (int i = 0; i < newTable.Length; i++)
+                {
+                    // Первые 512-ть байтов
+                    bool fl = false;
+                    for (int j = 0; j < 512; j++)
+                    {
+                        // Если по индексу j располагается значение, которое до перестановки было на месте i, то мы нашли нужное для отображения значение
+                        if (newTable[j] == i)
+                        {
+                            fl = true;
+                            break;
+                        }
+                    }
+
+                    if (fl)
+                        sb.Append("1");
+                    else
+                        sb.Append("0");
+
+                    if ((i & 7) == 7)
+                        sb.Append("\r\n");
+                }
+
+                File.WriteAllText($"matrix-{blockSize}.txt", sb.ToString());
+            }
         }
     }
 }
