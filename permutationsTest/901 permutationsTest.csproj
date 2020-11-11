@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MultiThreadTest.cs" />
+    <Compile Include="TweakTest.cs" />
     <Compile Include="PermutationDiffusionTest.cs" />
     <Compile Include="old-202010\BitBytBitShuffleTest.cs" />
     <Compile Include="old-202010\BitBytBitKeccakShuffleTest.cs" />
