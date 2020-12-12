@@ -61,10 +61,10 @@
     <Compile Include="GammaOverwrite_VinKekFishTest.cs" />
     <Compile Include="TweakTest.cs" />
     <Compile Include="PermutationDiffusionTest.cs" />
-    <Compile Include="old-202010\BitBytBitShuffleTest.cs" />
-    <Compile Include="old-202010\BitBytBitKeccakShuffleTest.cs" />
-    <Compile Include="old-202010\BitBytBitThreeFishPermutationTest.cs" />
-    <Compile Include="old-202010\BitBytBitKeccakPermutationTest.cs" />
+    <Compile Include="old\old-202010\BitBytBitShuffleTest.cs" />
+    <Compile Include="old\old-202010\BitBytBitKeccakShuffleTest.cs" />
+    <Compile Include="old\old-202010\BitBytBitThreeFishPermutationTest.cs" />
+    <Compile Include="old\old-202010\BitBytBitKeccakPermutationTest.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
