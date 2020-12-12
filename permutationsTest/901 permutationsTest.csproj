@@ -59,8 +59,9 @@
   <ItemGroup>
     <Compile Include="MultiThreadTest.cs" />
     <Compile Include="GammaOverwrite_VinKekFishTest.cs" />
-    <Compile Include="TweakTest.cs" />
-    <Compile Include="PermutationDiffusionTest.cs" />
+    <Compile Include="old\VinKekFish\Stat-FrequencyMonobitTest.cs" />
+    <Compile Include="old\VinKekFish\TweakTest.cs" />
+    <Compile Include="old\VinKekFish\PermutationDiffusionTest.cs" />
     <Compile Include="old\old-202010\BitBytBitShuffleTest.cs" />
     <Compile Include="old\old-202010\BitBytBitKeccakShuffleTest.cs" />
     <Compile Include="old\old-202010\BitBytBitThreeFishPermutationTest.cs" />
