@@ -28,7 +28,8 @@ namespace permutationsTest
         private static void AddTasks(ConcurrentQueue<TestTask> tasks)
         {
             // new TweakTest(tasks);
-
+            // new PermutationDiffusionTest(tasks);
+            new PermutationDiffusionTestx5(tasks);
         }
     }
 }

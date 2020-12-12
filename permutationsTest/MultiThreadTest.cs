@@ -11,12 +11,13 @@ namespace permutationsTest
 {
     public abstract class MultiThreadTest<T> where T: MultiThreadTest<T>.SourceTask
     {
-        protected readonly TestTask task;
+        public readonly TestTask task;
         public MultiThreadTest(ConcurrentQueue<TestTask> tasks, string name, SourceTaskFabric fabric)
         {
             task = new TestTask(name, StartTests);
             tasks?.Enqueue(task);
 
+            fabric.task = this;
             sources = fabric.GetIterator();
         }
 
@@ -30,6 +31,7 @@ namespace permutationsTest
 
         public abstract class SourceTaskFabric
         {
+            public MultiThreadTest<T> task;
             public abstract IEnumerable<T> GetIterator();
         }
     }

@@ -6,7 +6,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
 using System.IO;
@@ -19,11 +18,11 @@ namespace permutationsTest
  * Этот тест пытается расчитать по упрощённой имитационной модели, сколько нужно перестановок и преобразований для того,
  * чтобы обеспечить диффузию между всеми байтами криптографического состояния расширенного алгоритма
  * */
-    unsafe class PermutationDiffusionTest: MultiThreadTest<PermutationDiffusionTest.SourceTask>
+    unsafe class PermutationDiffusionTestx5: MultiThreadTest<PermutationDiffusionTestx5.SourceTask>
     {
-        public PermutationDiffusionTest(ConcurrentQueue<TestTask> tasks): base(tasks, "PermutationDiffusionTest", new PermutationDiffusionTest.SourceTaskFabric())
+        public PermutationDiffusionTestx5(ConcurrentQueue<TestTask> tasks): base(tasks, "PermutationDiffusionTestx5", new PermutationDiffusionTestx5.SourceTaskFabric())
         {
-            sizeInBits = 25600;
+            sizeInBits = 25600*5;
             size       = sizeInBits >> 3;
         }
 
@@ -33,11 +32,14 @@ namespace permutationsTest
             public readonly int           IterationCount;
             public readonly CipherOptions options;
 
-            public SourceTask(int iterationCount, CipherOptions opt, string TableName)
+            public readonly MultiThreadTest<PermutationDiffusionTestx5.SourceTask> task;
+
+            public SourceTask(int iterationCount, CipherOptions opt, string TableName, MultiThreadTest<PermutationDiffusionTestx5.SourceTask> task)
             {
                 this.TableName      = TableName;
                 this.IterationCount = iterationCount;
                 this.options        = opt;
+                this.task           = task;
             }
         }
 
@@ -47,15 +49,12 @@ namespace permutationsTest
             {
                 foreach (var opt in CipherOptions.getAllNotEmptyCiphers())
                 {
-                    for (int i = 2; i <= 8; i++)
+                    // 6 минут на раунд keccak
+                    foreach (int i in new int[] {6/*, 12, 15*/})
                     {
-                        /*yield return new SourceTask(i, opt, "base131");
-                        yield return new SourceTask(i, opt, "base199");
-                        yield return new SourceTask(i, opt, "base211");
-                        yield return new SourceTask(i, opt, "base233");*/
-                        yield return new SourceTask(i, opt, "transpose128");
-                        yield return new SourceTask(i, opt, "transpose200");
-                        /*yield return new SourceTask(i, opt, "transpose256");
+                        yield return new SourceTask(i, opt, "transpose128", this.task);
+                        /*yield return new SourceTask(i, opt, "transpose200");
+                        yield return new SourceTask(i, opt, "transpose256");
                         yield return new SourceTask(i, opt, "transpose384");
                         yield return new SourceTask(i, opt, "transpose387");*/
                     }
@@ -96,9 +95,9 @@ namespace permutationsTest
 
             public static IEnumerable<CipherOptions> getAllNotEmptyCiphers()
             {
-                yield return new CipherOptions(true,  false);
+                // yield return new CipherOptions(true,  false);
                 yield return new CipherOptions(false, true);
-                yield return new CipherOptions(true,  true);
+                // yield return new CipherOptions(true,  true);
             }
         }
 
@@ -107,122 +106,135 @@ namespace permutationsTest
             GenerateTables();
 
             var po = new ParallelOptions();
-            po.MaxDegreeOfParallelism = Environment.ProcessorCount;
+            po.MaxDegreeOfParallelism = 1; // Environment.ProcessorCount; // начинается OutOfMemory
             Parallel.ForEach
             (
                 sources, po,
                 delegate (SourceTask task)
                 {
-                    /*
-                        * Идея теста
-                        * Каждый байт должен повлиять на каждый другой байт
-                        * Если N байтов идут в перестановке, это означает, что с вероятностью 1/N эти байты повлияют друг на друга
-                        * Нужно, чтобы байты влияли друг на друга во всём состоянии примерно с вероятностью 1/N
-                        * И нужно, чтобы ВСЕ байты влияли друг на друга
-                        * Кроме этого, двойное влияние также можно зачесть в отдельной статистике
-                        * 
-                        * Общий алгоритм теста
-                        * 
-                        * P[i, j] есть "вероятность" того, что на байт j будет оказано влияние от байта i
-                        * 
-                        * На каждый байт у нас, по сути, должно быть два массива влияния:
-                        * один на равномерность влияния: вероятность влияния каждого байта на этот
-                        * второй на общее количество влияния: вероятность влияния умноженная на количество влияний
-                        * 
-                        * Таким образом, у нас есть массив P и массив F из чисел float
-                        * 
-                        * Изначально каждый байт номер I содержит 1f на месте байта I, и 0f на местах других байтов
-                        * Каждый стоблец номер I описывает влияние других байтов на I
-                        * При перестановках байтов столбцы не переставляются. Перестановки записываются в массив перестановок R[i]
-                        * Таким образом, для учёта статистики по байту, находящемуся на позиции i, необходимо учитывать её в F и P на позиции R[i]
-                        * Если бы перестановок не было, то индексы бы совпадали
-                        * 
-                        * 
-                        * При каждом шаге перестановок происходит следующее:
-                        *  для массива P
-                        *      создать вспомогательный массив с нулями // это неверно и скопировать из него столбец J (столбец с номером указанного байта)
-                        *      // это неверно: при копировании сразу разделить содержимое массива на два и на blockSize, т.к. влияние теперь будет и от других байтов
-                        *      для блока размером blockSize байтов
-                        *          для каждого байта I из блока, включая I = J
-                        *              сложить всопогательный массив столбца J со значениями из массива I, но делёными на blockSize и ещё на два
-                        * 
-                        * После проведения операций по всем байтам состояния, скопировать вспомогательные массивы в основные (в P или F)
-                    * */
-
-                    // Создаём массив P с равномерностью влияния байтов и инициализируем его
-                    var P = new float [size, size];
-                    var H = new float [size, size]; // вспомогательный массив
-                    var R = new ushort[size];       // Массив с номерами байтов после перестановок
-
-                    for (ushort i = 0; i < size; i++)
+                    try
                     {
-                        R[i] = i;
-                        for (int j = 0; j < size; j++)
-                        {
-                            P[i, j] = 0f;
+                        /*
+                            * Идея теста
+                            * Каждый байт должен повлиять на каждый другой байт
+                            * Если N байтов идут в перестановке, это означает, что с вероятностью 1/N эти байты повлияют друг на друга
+                            * Нужно, чтобы байты влияли друг на друга во всём состоянии примерно с вероятностью 1/N
+                            * И нужно, чтобы ВСЕ байты влияли друг на друга
+                            * Кроме этого, двойное влияние также можно зачесть в отдельной статистике
+                            * 
+                            * Общий алгоритм теста
+                            * 
+                            * P[i, j] есть "вероятность" того, что на байт j будет оказано влияние от байта i
+                            * 
+                            * На каждый байт у нас, по сути, должно быть два массива влияния:
+                            * один на равномерность влияния: вероятность влияния каждого байта на этот
+                            * второй на общее количество влияния: вероятность влияния умноженная на количество влияний
+                            * 
+                            * Таким образом, у нас есть массив P и массив F из чисел float
+                            * 
+                            * Изначально каждый байт номер I содержит 1f на месте байта I, и 0f на местах других байтов
+                            * Каждый стоблец номер I описывает влияние других байтов на I
+                            * При перестановках байтов столбцы не переставляются. Перестановки записываются в массив перестановок R[i]
+                            * Таким образом, для учёта статистики по байту, находящемуся на позиции i, необходимо учитывать её в F и P на позиции R[i]
+                            * Если бы перестановок не было, то индексы бы совпадали
+                            * 
+                            * 
+                            * При каждом шаге перестановок происходит следующее:
+                            *  для массива P
+                            *      создать вспомогательный массив с нулями // это неверно и скопировать из него столбец J (столбец с номером указанного байта)
+                            *      // это неверно: при копировании сразу разделить содержимое массива на два и на blockSize, т.к. влияние теперь будет и от других байтов
+                            *      для блока размером blockSize байтов
+                            *          для каждого байта I из блока, включая I = J
+                            *              сложить всопогательный массив столбца J со значениями из массива I, но делёными на blockSize и ещё на два
+                            * 
+                            * После проведения операций по всем байтам состояния, скопировать вспомогательные массивы в основные (в P или F)
+                        * */
 
-                            if (i == j)
+                        // Создаём массив P с равномерностью влияния байтов и инициализируем его
+                        var P = new float [size, size];
+                        var H = new float [size, size]; // вспомогательный массив
+                        var R = new ushort[size];       // Массив с номерами байтов после перестановок
+
+                        for (ushort i = 0; i < size; i++)
+                        {
+                            R[i] = i;
+                            for (int j = 0; j < size; j++)
                             {
-                                P[i, j] = 1f;
+                                P[i, j] = 0f;
+
+                                if (i == j)
+                                {
+                                    P[i, j] = 1f;
+                                }
                             }
                         }
-                    }
 
-                    doPermutationTest(P, H, R, task.IterationCount, task.TableName, task.options);
+                        doPermutationTest(P, H, R, task.IterationCount, task.TableName, task.options);
             
-                    // Нормализуем матрицу
-                    for (ushort i = 0; i < size; i++)
-                    {
-                        for (int j = 0; j < size; j++)
+                        // Нормализуем матрицу
+                        for (ushort i = 0; i < size; i++)
                         {
-                            P[i, j] *= (float) size;
-                        }
-                    }
-
-                    // Проверяем, что всё в пределах нормы
-                    bool error = false;
-                    float Max = float.MinValue, Min = float.MaxValue;
-                    for (ushort i = 0; i < size; i++)
-                    {
-                        for (int j = 0; j < size; j++)
-                        {
-                            if (P[i, j] > 1.001 || P[i, j] < 0.999)
+                            for (int j = 0; j < size; j++)
                             {
-                                /*if (!error)
-                                    this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
+                                P[i, j] *= (float) size;
+                            }
+                        }
 
-                                error = true;
-                                // goto @break;
+                        // Проверяем, что всё в пределах нормы
+                        bool error = false;
+                        float Max = float.MinValue, Min = float.MaxValue;
+                        for (ushort i = 0; i < size; i++)
+                        {
+                            for (int j = 0; j < size; j++)
+                            {
+                                if (P[i, j] > 1.001 || P[i, j] < 0.999)
+                                {
+                                    /*if (!error)
+                                        this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
+
+                                    error = true;
+                                    // goto @break;
+                                }
+
+                                if (P[i, j] > Max)
+                                    Max = P[i, j];
+                                if (P[i, j] < Min)
+                                    Min = P[i, j];
+                            }
+                        }
+                        // @break:
+
+                        var sb = new StringBuilder();
+                        var ss = 1000f;
+
+                        sb.AppendLine("P martix * " + ss);
+                        if (error)
+                            sb.AppendLine("P[i, j] > 1.001 || P[i, j] < 0.99");
+                        sb.AppendLine($"Min = {Min}, Max = {Max}");
+
+                        for (ushort i = 0; i < size; i++)
+                        {
+                            for (int j = 0; j < size; j++)
+                            {
+                                sb.Append(((int)(P[i, j]*ss)).ToString("D3") + "\t");
                             }
 
-                            if (P[i, j] > Max)
-                                Max = P[i, j];
-                            if (P[i, j] < Min)
-                                Min = P[i, j];
+                            sb.AppendLine();
                         }
+
+                        // File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
+                        File.WriteAllText($"matrix/r-x5-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", $"Min = {Min}, Max = {Max}");
                     }
-                    // @break:
-
-                    var sb = new StringBuilder();
-                    var ss = 1000f;
-
-                    sb.AppendLine("P martix * " + ss);
-                    if (error)
-                        sb.AppendLine("P[i, j] > 1.001 || P[i, j] < 0.99");
-                    sb.AppendLine($"Min = {Min}, Max = {Max}");
-
-                    for (ushort i = 0; i < size; i++)
+                    catch (Exception ex)
                     {
-                        for (int j = 0; j < size; j++)
+                        lock (task.task.task)
                         {
-                            sb.Append(((int)(P[i, j]*ss)).ToString("D3") + "\t");
+                            var error = new Error();
+                            error.ex = ex;
+                            error.Message = ex.Message + "\r\n" + ex.StackTrace;
+                            task.task.task.error.Add(error);
                         }
-
-                        sb.AppendLine();
                     }
-
-                    // File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
-                    File.WriteAllText($"matrix/r-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", $"Min = {Min}, Max = {Max}");
                 }
             );  // The end of Parallel.foreach sources running
         }
@@ -466,15 +478,16 @@ namespace permutationsTest
 
                 if (tables.Count > 0)
                     return;
-
+                    /*
                 for (int i = 1; i < valueToAdd.Length; i++)
                     GenBaseTable(i);
-
+                    */
                 GenTransposeTable(128);
                 GenTransposeTable(200);
                 GenTransposeTable(256);
-                GenTransposeTable(384); // Чтобы значения брались не по порядку, но кратно 128-ми
-                GenTransposeTable(256+131); // 387
+                GenTransposeTable(800);
+                // GenTransposeTable(384); // Чтобы значения брались не по порядку, но кратно 128-ми
+                // GenTransposeTable(256+131); // 387
             }
         }
 
@@ -524,7 +537,7 @@ namespace permutationsTest
             {
                 if (!newTable.Contains(i))
                 {
-                    throw new Exception($"!newTable.Contains({i}) numberOfTable = {numberOfTable}");
+                    throw new Exception($"GenBaseTable: !newTable.Contains({i}) numberOfTable = {numberOfTable}");
                 }
             }
 
@@ -573,7 +586,7 @@ namespace permutationsTest
             {
                 if (!newTable.Contains(i))
                 {
-                    throw new Exception($"!newTable.Contains({i}) numberOfTable = {0}");
+                    throw new Exception($"GenTransposeTable: !newTable.Contains({i}) numberOfTable = {blockSize}");
                 }
             }
 
