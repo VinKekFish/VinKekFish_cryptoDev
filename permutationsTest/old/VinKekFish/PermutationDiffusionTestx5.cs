@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
 using System.IO;
+using System.Threading;
 
 namespace permutationsTest
 {
@@ -17,12 +18,46 @@ namespace permutationsTest
  * 
  * Этот тест пытается расчитать по упрощённой имитационной модели, сколько нужно перестановок и преобразований для того,
  * чтобы обеспечить диффузию между всеми байтами криптографического состояния расширенного алгоритма
+ * 
+ * Константа K - коэффициент умножения размера внутреннего состояния VinKekFish.
+ * Запуск теста осуществляется при различных константах K. Величину константы K нужно устанавливать вручную.
+ * 
+ * Результаты работы по диффузии:
+ *  K = 1;
+ *      Min = 0,9983984, Max = 1,023999;  3 итерации (3 раунда по одной перестановке keccak)
+ *      Min = 0,9994209, Max = 1,000446;  4 итерации
+ *      Min = 0,9999946, Max = 1,000036;  5 итераций
+ *      Min = 0,9999981, Max = 0,9999997; 6 итераций (выполняется 1 мин или 23 сек в многопоточном режиме)
+ * 
+ * K = 3;
+ *      Min = 0,9575994, Max = 1,055999; 3 итерации
+ *      Min = 0,9986629, Max = 1,001394; 4 итерации
+ *      Min = 0,9999809, Max = 1,00002;  5 итераций
+ *      Min = 0,999998,  Max = 1,000001; 6 итераций (выполняется 7:22 (мин:сек) в многопоточном режиме с распараллеливанием в ProbabilityImitationForKeccak; за 2:25 с распараллеливанием в doPermutationTest_Keccak )
+ * 
+ * K = 5;
+ *      Min = 0,9159989, Max = 1,107999; 3 итерации
+ *      Min = 0,9970089, Max = 1,002639; 4 итерации
+ *      Min = 0,999954,  Max = 1,000052; 5 итераций
+ *      Min = 0,9999971, Max = 1,000001; 6 итераций
+ *
+ * K = 6;
+ *      Min = 0,997619,  Max = 1,002612; 4 итерации
+ * 		Min = 0,9999442, Max = 1,000062; 5 итераций
+ * 		Min = 0,9999937, Max = 1,000003; 6 итераций
+ * 
+ * K = 7;
+ *      Min = 0,9463994, Max = 1,0612;   3 итерации
+ *		Min = 0,9975408, Max = 1,003058; 4 итерации
+ * 		Min = 0,9999342, Max = 1,000081; 5 итераций
+ *
  * */
     unsafe class PermutationDiffusionTestx5: MultiThreadTest<PermutationDiffusionTestx5.SourceTask>
     {
+        public const int K = 6;
         public PermutationDiffusionTestx5(ConcurrentQueue<TestTask> tasks): base(tasks, "PermutationDiffusionTestx5", new PermutationDiffusionTestx5.SourceTaskFabric())
         {
-            sizeInBits = 25600*5;
+            sizeInBits = 25600*K;
             size       = sizeInBits >> 3;
         }
 
@@ -47,10 +82,10 @@ namespace permutationsTest
         {
             public override IEnumerable<SourceTask> GetIterator()
             {
-                foreach (var opt in CipherOptions.getAllNotEmptyCiphers())
+                foreach (var opt in /*CipherOptions.getAllNotEmptyCiphers()*/ CipherOptions.getKeccakCipher())
                 {
-                    // 6 минут на раунд keccak
-                    foreach (int i in new int[] {6/*, 12, 15*/})
+                    // 6 минут на 1 раунд keccak
+                    foreach (int i in new int[] {8/*, 12, 15*/})
                     {
                         yield return new SourceTask(i, opt, "transpose128", this.task);
                         /*yield return new SourceTask(i, opt, "transpose200");
@@ -94,6 +129,13 @@ namespace permutationsTest
             }
 
             public static IEnumerable<CipherOptions> getAllNotEmptyCiphers()
+            {
+                yield return new CipherOptions(true,  false);
+                yield return new CipherOptions(false, true);
+                yield return new CipherOptions(true,  true);
+            }
+
+            public static IEnumerable<CipherOptions> getKeccakCipher()
             {
                 // yield return new CipherOptions(true,  false);
                 yield return new CipherOptions(false, true);
@@ -169,61 +211,74 @@ namespace permutationsTest
                             }
                         }
 
-                        doPermutationTest(P, H, R, task.IterationCount, task.TableName, task.options);
+                        // doPermutationTest(P, H, R, task.IterationCount, task.TableName, task.options);
             
-                        // Нормализуем матрицу
-                        for (ushort i = 0; i < size; i++)
+                        // Делаем это вместо doPermutationTest - только keccak
+                        for (int iterationNumber = 1; iterationNumber <= task.IterationCount; iterationNumber++)
                         {
-                            for (int j = 0; j < size; j++)
-                            {
-                                P[i, j] *= (float) size;
-                            }
-                        }
+                            doPermutationTest_Keccak(P, H, R);
+                            DoPermutation(R, tables[task.TableName]);
 
-                        // Проверяем, что всё в пределах нормы
-                        bool error = false;
-                        float Max = float.MinValue, Min = float.MaxValue;
-                        for (ushort i = 0; i < size; i++)
-                        {
-                            for (int j = 0; j < size; j++)
+                            if (iterationNumber < task.IterationCount - 4 || iterationNumber < 3)
+                                continue;
+
+                            var Result = new float[P.GetLength(0), P.GetLength(1)];
+                            // Копируем матрицу в матрицу результата и сразу же нормализуем её
+                            for (ushort i = 0; i < size; i++)
                             {
-                                if (P[i, j] > 1.001 || P[i, j] < 0.999)
+                                for (int j = 0; j < size; j++)
                                 {
-                                    /*if (!error)
-                                        this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
+                                    // P[i, j] *= (float) size;
+                                    Result[i, j] = P[i, j] * (float) size;
+                                }
+                            }
 
-                                    error = true;
-                                    // goto @break;
+                            // Проверяем, что всё в пределах нормы
+                            bool error = false;
+                            float Max = float.MinValue, Min = float.MaxValue;
+                            for (ushort i = 0; i < size; i++)
+                            {
+                                for (int j = 0; j < size; j++)
+                                {
+                                    if (Result[i, j] > 1.001 || Result[i, j] < 0.999)
+                                    {
+                                        /*if (!error)
+                                            this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
+
+                                        error = true;
+                                        // goto @break;
+                                    }
+
+                                    if (Result[i, j] > Max)
+                                        Max = Result[i, j];
+                                    if (Result[i, j] < Min)
+                                        Min = Result[i, j];
+                                }
+                            }
+                            // @break:
+
+                            var sb = new StringBuilder();
+                            /*var ss = 1000f;
+                            sb.AppendLine("P martix * " + ss);
+                            if (error)
+                                sb.AppendLine("P[i, j] > 1.001 || P[i, j] < 0.99");
+                            sb.AppendLine($"Min = {Min}, Max = {Max}");
+
+                            for (ushort i = 0; i < size; i++)
+                            {
+                                for (int j = 0; j < size; j++)
+                                {
+                                    sb.Append(((int)(Result[i, j]*ss)).ToString("D3") + "\t");
                                 }
 
-                                if (P[i, j] > Max)
-                                    Max = P[i, j];
-                                if (P[i, j] < Min)
-                                    Min = P[i, j];
+                                sb.AppendLine();
                             }
+                            
+                            File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
+                            */
+
+                            File.WriteAllText($"matrix/r-x{K.ToString()}-{task.options.ToString()}-{task.TableName}-{iterationNumber.ToString("D2")}.txt", $"Min = {Min}, Max = {Max}");
                         }
-                        // @break:
-
-                        var sb = new StringBuilder();
-                        var ss = 1000f;
-
-                        sb.AppendLine("P martix * " + ss);
-                        if (error)
-                            sb.AppendLine("P[i, j] > 1.001 || P[i, j] < 0.99");
-                        sb.AppendLine($"Min = {Min}, Max = {Max}");
-
-                        for (ushort i = 0; i < size; i++)
-                        {
-                            for (int j = 0; j < size; j++)
-                            {
-                                sb.Append(((int)(P[i, j]*ss)).ToString("D3") + "\t");
-                            }
-
-                            sb.AppendLine();
-                        }
-
-                        // File.WriteAllText($"matrix/matrix-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", sb.ToString());
-                        File.WriteAllText($"matrix/r-x5-{task.options.ToString()}-{task.TableName}-{task.IterationCount.ToString("D2")}.txt", $"Min = {Min}, Max = {Max}");
                     }
                     catch (Exception ex)
                     {
@@ -389,10 +444,23 @@ namespace permutationsTest
             // Работаем с массивом P
             CopyToH(P, PH, 1f);
 
+            /*
             for (int i = 0; i < size200; i++)
             {
                 KeccakImitation(P, PH, H, R, i, size200);
             }
+            */
+
+            CopyToH(PH, H,  1f);
+            Parallel.For
+            (
+                0, size200,
+                delegate(int i)
+                {
+                    KeccakImitation(P, PH, H, R, i, size200);
+                }
+            );
+            CopyToH(H, PH, 1f);
 
             CopyToH(PH, P, 1f);
         }
@@ -401,13 +469,13 @@ namespace permutationsTest
         {
             int startB = blockPosition * 200;
 
-            CopyToH(PH, H,  1f);
+            //CopyToH(PH, H,  1f);
             // MatrixToNull(H);
 
             // P[i, j] есть "вероятность" того, что на байт j будет оказано влияние от байта i
             ProbabilityImitationForKeccak(P, PH, H, R, startB);
 
-            CopyToH(H, PH, 1f);
+            //CopyToH(H, PH, 1f);
         }
 
         private void ProbabilityImitationForKeccak(float[,] P, float[,] PH, float[,] H, ushort[] R, int startB)
@@ -422,16 +490,41 @@ namespace permutationsTest
                     H[iR, GetByteNumber(k, R)] = 0f;
                 }
             }
-
+            
             for (int i = 0; i < size; i++)
             {
                 var iR = GetByteNumber(i, R);
+
                 for (int j = startB; j < startB + 200; j++)
                 for (int k = startB; k < startB + 200; k++)
                 {
                     H[iR, GetByteNumber(k, R)] += PH[iR, GetByteNumber(j, R)] * kDiv;
                 }
             }
+
+            /*
+            Parallel.For
+            (
+                0, size,
+                delegate(int i)
+                {
+                    var iR = GetByteNumber(i, R);
+
+                    var Hn = new float[H.GetLength(1)];
+                    for (int j = 0; j < Hn.Length; j++)
+                        Hn[j] = 0;
+
+                    for (int j = startB; j < startB + 200; j++)
+                    for (int k = startB; k < startB + 200; k++)
+                    {
+                        Hn[GetByteNumber(k, R)] += PH[iR, GetByteNumber(j, R)] * kDiv;
+                    }
+
+                    lock (H)
+                        for (int j = 0; j < Hn.Length; j++)
+                            H[iR, j] += Hn[j];
+                }
+            );*/
         }
 
         /// <summary>Возвращает номер байта, находящегося на позиции positionInArray</summary>
