@@ -19,22 +19,31 @@ namespace factorial_library
             lock (sync)
             if (factorials == null)
             {
-                factorials    = new BigInteger[32768];
+                // factorials    = new BigInteger[32768];
+                // factorials    = new BigInteger[16384];
+                factorials    = new BigInteger[8192];
+                // factorials    = new BigInteger[4096];
                 factorials[0] = 1; // 0!
-                factorials[1] = 2; // 2!
-                for (int i = 2; i < factorials.Length; i++)
+                for (int i = 1; i < factorials.Length; i++)
                 {
-                    long s = i << 1;
-                    factorials[i] = s * (s - 1) * factorials[i - 1];
+                    long s = i << 3;
+                    var sf = new BigInteger(s);
+                    for (int j = 0; j < 7; j++)
+                    {
+                        s--;
+                        sf *= s;
+                    }
+
+                    factorials[i] = sf * factorials[i - 1];
                 }
             }
 
             var r = new BigInteger(1);
             for (int i = fact; i > 0; i--)
             {
-                if ((i >> 1) < factorials.Length && (i & 1) == 0)
+                if ((i >> 3) < factorials.Length && (i & 7) == 0)
                 {
-                    return r * factorials[i >> 1];
+                    return r * factorials[i >> 3];
                 }
 
                 r = i * r;
