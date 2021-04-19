@@ -25,3 +25,7 @@ VinKekFish_cryptoDev\permutationsTest\old\VinKekFish\TweakTest.cs
 VinKekFish_cryptoDev\permutationsTest\GammaOverwrite_VinKekFishTest.cs
 	Тест должен вычислить длину гаммы в режиме Overwrite с вырожденным внутренним состоянием (слишком маленьким)
 
+
+## Факториальные тесты
+\VinKekFish_cryptoDev\permutationsTest\bPtBWjTY84jo\PermutationCalc
+    Тесты рассчитывают вероятность того, что некторое число встретится в гамме определённое количество раз

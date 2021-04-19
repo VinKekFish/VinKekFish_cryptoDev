@@ -29,7 +29,9 @@ namespace permutationsTest
         {
             // new TweakTest(tasks);
             // new PermutationDiffusionTest(tasks);
-            new PermutationDiffusionTestx5(tasks);
+            // new PermutationDiffusionTestx5(tasks);
+            new GenTablesTest(tasks);
+
         }
     }
 }

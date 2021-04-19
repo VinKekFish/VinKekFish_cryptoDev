@@ -38,7 +38,8 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="cryptoprime">
+    <Reference Include="cryptoprime, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\VinKekFish\main_tests\bin\Release\cryptoprime.dll</HintPath>
     </Reference>
     <Reference Include="main_tests">
@@ -52,7 +53,8 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="vinkekfish">
+    <Reference Include="vinkekfish, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\VinKekFish\main_tests\bin\Release\vinkekfish.dll</HintPath>
     </Reference>
   </ItemGroup>
@@ -62,6 +64,7 @@
     <Compile Include="old\VinKekFish\PermutationDiffusionTestx5.cs" />
     <Compile Include="old\VinKekFish\Stat-FrequencyMonobitTest.cs" />
     <Compile Include="old\VinKekFish\TweakTest.cs" />
+    <Compile Include="old\VinKekFish\GenTablesTest.cs" />
     <Compile Include="old\VinKekFish\PermutationDiffusionTest.cs" />
     <Compile Include="old\old-202010\BitBytBitShuffleTest.cs" />
     <Compile Include="old\old-202010\BitBytBitKeccakShuffleTest.cs" />
