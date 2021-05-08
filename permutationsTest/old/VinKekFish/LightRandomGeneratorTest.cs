@@ -27,10 +27,10 @@ namespace permutationsTest
         public void StartTests()
         {
             const int ModNumber = 4;
-            //const int Count     = 512;
-            const int Count     = 1024*1024;
+            const int Count     = 4096;
+            // const int Count     = 1024*1024;
             counts = new int[ModNumber];
-
+goto End;   // TODO: УБрать это при тестах
             for (int i = 0; i < counts.Length; i++)
                 counts[i] = 0;
 
@@ -100,7 +100,6 @@ namespace permutationsTest
             for (int i = 0; i < counts.Length; i++)
                 counts[i] = 0;
 
-            if (false)
             using (var gen = new VinKekFish_k1_base_20210419_keyGeneration())
             {
                 gen.Init1(VinKekFishBase_etalonK1.NORMAL_ROUNDS, null, 0);
@@ -162,6 +161,38 @@ namespace permutationsTest
 
                 Save2ToBitmap(Count, a.len, a, @"Z:\LightRandomGeneratorTest_keccak.bmp");
                 a.Dispose();
+            }
+End:
+            for (int i = 0; i < counts.Length; i++)
+                counts[i] = 0;
+
+            // Здесь вообще нельзя генерировать много - зависнет. Даёт одну генерацию секунд в 1-5, генерация - 3 байта (генерация зависит от дисковой активности)
+            using (var l = new LightRandomGenerator_DiskSlow(Count))
+            {
+                l.WaitForGenerator();
+
+                var len = l.GeneratedBytes.len;
+                var a   = l.GeneratedBytes.array;
+
+                lock (this)
+                    for (int i = 0; i < len; i++)
+                    {
+                        var mod = a[i] % ModNumber;
+                        counts[mod]++;
+                        a[i] = (byte)mod;
+                    }
+
+                var sb = new StringBuilder(ModNumber * 256);
+                sb.AppendLine($"Right average is {Count / ModNumber}");
+                sb.AppendLine();
+
+                for (int i = 0; i < ModNumber; i++)
+                    sb.AppendLine(counts[i].ToString("D4"));
+
+                task.error.Add(new Error() { Message = sb.ToString() });
+
+                File.WriteAllText(@"Z:/LightRandomGeneratorTest_diskslow.txt", sb.ToString() + "\r\n\r\n" + l.GeneratedBytes.ToString(64*1024));
+                Save2ToBitmap(Count, len, a, @"Z:\LightRandomGeneratorTest_diskslow.bmp");
             }
         }
 
