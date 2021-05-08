@@ -22,6 +22,8 @@ namespace pc4
             File.WriteAllText("P.txt", "");
             File.WriteAllText("F.txt", "");
 
+            InitFactorialTable(n);
+
             double summP = 0;
             for (int k = 0; k < n; k++)
             {

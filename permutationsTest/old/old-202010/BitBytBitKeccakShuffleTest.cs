@@ -1,6 +1,7 @@
 ﻿using cryptoprime;
 using vinkekfish;
 using main_tests;
+using static cryptoprime.keccak;
 
 using System;
 using System.Collections.Concurrent;
@@ -109,7 +110,7 @@ namespace permutationsTest
             using (var state = new Keccak_abstract.KeccakStatesArray(k.State, false))
             {
                 byte* cur = msg;
-                var blockLen = keccak.S_len2 << 3;
+                var blockLen = cryptoprime.keccak.S_len2 << 3;
                 var buffer   = new byte[2048];
                 // var table    = tables[TableName];
                 fixed (byte * buff = buffer)
@@ -160,7 +161,7 @@ namespace permutationsTest
                 }*/
 
                 if (fl && SB != skippedBlock)
-                    keccak.Keccackf((ulong *) cur, state.Clong, state.Blong);
+                    cryptoprime.keccak.Keccackf((ulong *) cur, state.Clong, state.Blong);
 
                 cur += blockLen;
                 i += blockLen;

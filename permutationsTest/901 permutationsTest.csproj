@@ -12,6 +12,21 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -42,11 +57,16 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\VinKekFish\main_tests\bin\Release\cryptoprime.dll</HintPath>
     </Reference>
+    <Reference Include="keccak, Version=1.11.3.2017, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\VinKekFish\main_tests\keccak.dll</HintPath>
+    </Reference>
     <Reference Include="main_tests">
       <HintPath>..\..\VinKekFish\main_tests\bin\Release\main_tests.exe</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -61,22 +81,35 @@
   <ItemGroup>
     <Compile Include="MultiThreadTest.cs" />
     <Compile Include="GammaOverwrite_VinKekFishTest.cs" />
-    <Compile Include="old\VinKekFish\PermutationDiffusionTestx5.cs" />
-    <Compile Include="old\VinKekFish\Stat-FrequencyMonobitTest.cs" />
-    <Compile Include="old\VinKekFish\TweakTest.cs" />
-    <Compile Include="old\VinKekFish\GenTablesTest.cs" />
-    <Compile Include="old\VinKekFish\PermutationDiffusionTest.cs" />
+    <Compile Include="old\VinKekFish\Design\PermutationDiffusionTestx5.cs" />
+    <Compile Include="old\VinKekFish\Design\Stat-FrequencyMonobitTest.cs" />
+    <Compile Include="old\VinKekFish\Design\TweakTest.cs" />
+    <Compile Include="old\VinKekFish\Design\GenTablesTest.cs" />
+    <Compile Include="old\VinKekFish\Design\PermutationDiffusionTest.cs" />
     <Compile Include="old\old-202010\BitBytBitShuffleTest.cs" />
     <Compile Include="old\old-202010\BitBytBitKeccakShuffleTest.cs" />
     <Compile Include="old\old-202010\BitBytBitThreeFishPermutationTest.cs" />
     <Compile Include="old\old-202010\BitBytBitKeccakPermutationTest.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="old\VinKekFish\LightRandomGeneratorTest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="description.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.8">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.8 %28x86 и x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -30,8 +30,8 @@ namespace permutationsTest
             // new TweakTest(tasks);
             // new PermutationDiffusionTest(tasks);
             // new PermutationDiffusionTestx5(tasks);
-            new GenTablesTest(tasks);
-
+            // new GenTablesTest(tasks);
+            new LightRandomGeneratorTest(tasks);
         }
     }
 }

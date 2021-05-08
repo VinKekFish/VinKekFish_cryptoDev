@@ -116,7 +116,7 @@ namespace permutationsTest
             using (var state = new Keccak_abstract.KeccakStatesArray(k.State, false))
             {
                 // byte* cur = msg;
-                var blockLen = keccak.S_len2 << 3;
+                var blockLen = cryptoprime.keccak.S_len2 << 3;
                 var buffer   = new byte[2048];
                 // var table    = tables[TableName];
                 fixed (byte * buff = buffer)
@@ -155,7 +155,7 @@ namespace permutationsTest
             long SB = 0;
             for (i = 0; i <= len - blockLen; SB++)
             {
-                keccak.Keccackf((ulong *) cur, state.Clong, state.Blong);
+                cryptoprime.keccak.Keccackf((ulong *) cur, state.Clong, state.Blong);
 
                 cur += blockLen;
                 i += blockLen;

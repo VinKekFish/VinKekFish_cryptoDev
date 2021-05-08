@@ -234,7 +234,7 @@ namespace permutationsTest
                             }
 
                             // Проверяем, что всё в пределах нормы
-                            bool error = false;
+                            // bool error = false;
                             float Max = float.MinValue, Min = float.MaxValue;
                             for (ushort i = 0; i < size; i++)
                             {
@@ -245,7 +245,7 @@ namespace permutationsTest
                                         /*if (!error)
                                             this.task.error.Add(new Error() {Message = $"P[i, j] > 1.001 || P[i, j] < 0.99: P[{i}, {j}] == {P[i, j]}"});*/
 
-                                        error = true;
+                                        // error = true;
                                         // goto @break;
                                     }
 
