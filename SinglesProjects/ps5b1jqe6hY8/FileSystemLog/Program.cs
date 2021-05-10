@@ -9,8 +9,15 @@ namespace FileSystemLog
 {
     class Program
     {
+        public static string       IgnoredFiles          = "ignoredFiles";
+        public static List<string> IgnoredFileNames      = new List<string>();      // Синхронизировать доступ к обоим с помощью lock (watchers)
+        public static List<string> IgnoredFileStartNames = new List<string>();
         static void Main(string[] args)
         {
+            if (!File.Exists(IgnoredFiles))
+                File.WriteAllText(IgnoredFiles, "");
+            UpdateIgnoredFileNames();
+
             CreateFileSystemWatchers();
 
             Console.WriteLine("Logging started to file FileSystem*.log . Press any key to exit");
@@ -19,8 +26,13 @@ namespace FileSystemLog
         }
 
         public static SortedList<string, FileSystemWatcher> watchers = new SortedList<string, FileSystemWatcher>(16);
+        public static FileSystemWatcher IgnoredFilesWatcher = null;
         public static long CreateFileSystemWatchers()
         {
+            IgnoredFilesWatcher = new FileSystemWatcher(new FileInfo(IgnoredFiles).DirectoryName);
+            IgnoredFilesWatcher.Changed += IgnoredFilesWatcher_Changed;
+            IgnoredFilesWatcher.EnableRaisingEvents = true;
+
             var now = DateTime.Now;
             LogFileName = new FileInfo("FileSystem" + now.Year + "-" + now.DayOfYear + "-" + now.Hour + ".log").FullName;
 
@@ -48,6 +60,46 @@ namespace FileSystemLog
             }
 
             return lastDrivesCount;
+        }
+
+        public static void IgnoredFilesWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            lock (watchers)
+                UpdateIgnoredFileNames();
+        }
+
+        public static void UpdateIgnoredFileNames()
+        {
+            bool flag = false;
+            do
+            {
+                try
+                {
+                    IgnoredFileNames     .Clear();
+                    IgnoredFileStartNames.Clear();
+
+                    var names = File.ReadAllLines(IgnoredFiles);
+
+                    foreach (var name in names)
+                    {
+                        if (name.Trim().Length <= 0)
+                            continue;
+                        if (name.Trim().StartsWith("#"))
+                            continue;
+
+                        if (name.StartsWith("::"))
+                            IgnoredFileStartNames.Add(name.Substring(2));
+                        else
+                            IgnoredFileNames.Add(name);
+                    }
+
+                    flag = true;
+                }
+                catch (IOException)
+                {
+                }
+            }
+            while (!flag);
         }
 
         public static void CreateSystemWatcher(string path)
@@ -89,7 +141,21 @@ namespace FileSystemLog
             if (e.FullPath == LogFileName)
                 return;
                 
-            var fileName = Path.Combine(e.FullPath, e.Name);
+            var fileName = e.FullPath;
+
+            lock (watchers)
+            foreach (var fn in IgnoredFileNames)
+            {
+                if (fn == fileName)
+                    return;
+            }
+
+            lock (watchers)
+            foreach (var fn in IgnoredFileStartNames)
+            {
+                if (fileName.StartsWith(fn))
+                    return;
+            }
 
             var sb = new StringBuilder();
             switch (e.ChangeType)

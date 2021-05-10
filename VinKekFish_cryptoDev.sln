@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "901 permutationsTest", "per
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Verify", "Verify", "{FDC168EA-8FB7-4C86-ADDE-76EDF1AA2423}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "902 FiniteMachineChecker", "FiniteMachineChecker\902 FiniteMachineChecker.csproj", "{95324CFC-1044-4F7D-B5FE-6DC951E66B68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +19,10 @@ Global
 		{E3D82ADA-37AD-4BD6-BAD4-DE1636022874}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3D82ADA-37AD-4BD6-BAD4-DE1636022874}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3D82ADA-37AD-4BD6-BAD4-DE1636022874}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95324CFC-1044-4F7D-B5FE-6DC951E66B68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95324CFC-1044-4F7D-B5FE-6DC951E66B68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95324CFC-1044-4F7D-B5FE-6DC951E66B68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95324CFC-1044-4F7D-B5FE-6DC951E66B68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
