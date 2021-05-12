@@ -98,20 +98,17 @@ namespace permutationsTest
         public unsafe void Permutation(byte * msg, long len)
         {
             var k = new Keccak_20200918();
-            using (var state = new Keccak_abstract.KeccakStatesArray(k.State, false))
+            byte* cur = msg;
+            var table    = tables["base8"];
+            fixed (ulong *  t = tweak)
+            fixed (ushort * T = table)
             {
-                byte* cur = msg;
-                var table    = tables["base8"];
-                fixed (ulong *  t = tweak)
-                fixed (ushort * T = table)
-                {
-                    DoThreefishForAllBlocks(msg, len, t, state, 128, T, table.Length);
-                }
+                DoThreefishForAllBlocks(msg, len, t, k, 128, T, table.Length);
             }
         }
 
         readonly static ulong[] tweak = new ulong[2];
-        private static unsafe void DoThreefishForAllBlocks(byte* msg, long len, ulong * tweak, Keccak_abstract.KeccakStatesArray state, int blockLen, ushort * table, int tableLen)
+        private static unsafe void DoThreefishForAllBlocks(byte* msg, long len, ulong * tweak, Keccak_abstract state, int blockLen, ushort * table, int tableLen)
         {
             byte* cur = msg;
             for (int i = 0; i <= len - blockLen; i += blockLen)

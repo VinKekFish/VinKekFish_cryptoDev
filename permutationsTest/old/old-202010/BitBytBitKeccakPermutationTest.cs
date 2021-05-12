@@ -107,30 +107,27 @@ namespace permutationsTest
         public unsafe void Permutation(byte * msg, long len, long skippedBlock)
         {
             var k = new Keccak_20200918();
-            using (var state = new Keccak_abstract.KeccakStatesArray(k.State, false))
+            byte* cur = msg;
+            var blockLen = cryptoprime.keccak.S_len2 << 3;
+            var buffer   = new byte[2048];
+            var table    = tables[TableName];
+            fixed (byte * buff = buffer)
+            fixed (ulong * t = tweak)
             {
-                byte* cur = msg;
-                var blockLen = cryptoprime.keccak.S_len2 << 3;
-                var buffer   = new byte[2048];
-                var table    = tables[TableName];
-                fixed (byte * buff = buffer)
-                fixed (ulong * t = tweak)
+                for (int i = 0; i <= permutationCount; i++)
                 {
-                    for (int i = 0; i <= permutationCount; i++)
-                    {
-                        DoKeccakForAllBlocks(msg, len, state, blockLen, skippedBlock);
-                        DoPermutation(msg, table, buff);
-                        DoKeccakForAllBlocks(msg, len, state, blockLen, skippedBlock);
-                        DoPermutation(msg, tables["base1"], buff);
-                    }
-
-                    /*
-                    DoThreefishForAllBlocks(msg, len, t, state, 128);
+                    DoKeccakForAllBlocks(msg, len, k, blockLen, skippedBlock);
                     DoPermutation(msg, table, buff);
-                    DoThreefishForAllBlocks(msg + 64, len - 128, t, state, 128);
-                    DoPermutation(msg, table, buff);
-                    DoThreefishForAllBlocks(msg, len, t, state, 128);*/
+                    DoKeccakForAllBlocks(msg, len, k, blockLen, skippedBlock);
+                    DoPermutation(msg, tables["base1"], buff);
                 }
+
+                /*
+                DoThreefishForAllBlocks(msg, len, t, state, 128);
+                DoPermutation(msg, table, buff);
+                DoThreefishForAllBlocks(msg + 64, len - 128, t, state, 128);
+                DoPermutation(msg, table, buff);
+                DoThreefishForAllBlocks(msg, len, t, state, 128);*/
             }
         }
 
@@ -144,7 +141,7 @@ namespace permutationsTest
             BytesBuilder.CopyTo(2048, 2048, buff, msg);
         }
         
-        private static unsafe void DoKeccakForAllBlocks(byte* msg, long len, Keccak_abstract.KeccakStatesArray state, int blockLen, long skippedBlock)
+        private static unsafe void DoKeccakForAllBlocks(byte* msg, long len, Keccak_abstract state, int blockLen, long skippedBlock)
         {
             byte* cur = msg;
             long i;
@@ -178,7 +175,7 @@ namespace permutationsTest
         }
 
         readonly static ulong[] tweak = new ulong[2];
-        private static unsafe void DoThreefishForAllBlocks(byte* msg, long len, ulong * tweak, Keccak_abstract.KeccakStatesArray state, int blockLen)
+        private static unsafe void DoThreefishForAllBlocks(byte* msg, long len, ulong * tweak, Keccak_abstract state, int blockLen)
         {
             byte* cur = msg;
             for (int i = 0; i <= len - blockLen; i += blockLen)
