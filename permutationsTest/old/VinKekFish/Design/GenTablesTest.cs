@@ -31,10 +31,24 @@ namespace permutationsTest
 
         public new class SourceTask: MultiThreadTest<SourceTask>.SourceTask
         {
-            public readonly int Number;
-            public SourceTask(int Number)
+            public readonly string   Number;
+            public readonly ushort*  table;
+            // public readonly ushort*  table_inv;
+            public readonly int      size;
+            public readonly int      step;
+            public readonly int      step2;
+            public readonly int      retries;
+
+            public SourceTask(int size, int step, int step2, int retries = 1)
             {
-                this.Number = Number;
+                this.Number  = $"{step}_{size}_{step2}x{retries}";
+                this.step    = step;
+                this.step2   = step2;
+                this.size    = size;
+                this.retries = retries;
+
+                table     = GenTransposeTable((ushort) size, (ushort) step,     stepInEndOfBlocks: (ushort) step2, numberOfRetries: retries);
+                // table_inv = GenTransposeTable((ushort) size, (ushort) (step*2 * size / 3200), stepInEndOfBlocks: (ushort) (step2*2 * size / 3200), numberOfRetries: retries);
             }
         }
 
@@ -42,8 +56,14 @@ namespace permutationsTest
         {
             public override IEnumerable<SourceTask> GetIterator()
             {
-                yield return new SourceTask(200);
-                yield return new SourceTask(128);
+                for (int i = 1; 3200*i < 65536; i++)
+                {
+                    yield return new SourceTask(3200*i, 200, 1);
+                    yield return new SourceTask(3200*i, 128, 1);
+                    yield return new SourceTask(3200*i, 200, 8);
+                    yield return new SourceTask(3200*i, 200, 8, 2);
+                    yield return new SourceTask(3200*i, 400, 16);
+                }
             }
         }
 
@@ -57,57 +77,54 @@ namespace permutationsTest
                 sources, po,
                 delegate (SourceTask task)
                 {
-                    var fileName = $"results/transpose-{task.Number}.txt";
+                    try
+                    {
+                        var fileName = $"results/table_transpose-{task.Number}.txt";
                     
-                    ushort[] t = null;
-                    switch (task.Number)
-                    {
-                        case 128:
-                            t = transpose128_3200;
-                            break;
-                        case 200:
-                            t = transpose200_3200;
-                            break;
+                        ushort * t   = task.table;
+                        // ushort * t_i = task.table_inv;
+                        int      len = task.size;
+
+                        var sb = new StringBuilder(len << 2);
+                        for (int i = 0; i < len; i++)
+                        {
+                            sb.Append(t[i].ToString("D4") + " ");
+                            if (i % task.step == (task.step - 1))
+                                sb.AppendLine();
+                        }
+
+                        sb.AppendLine();
+                        File.WriteAllText(fileName, sb.ToString());
+
+                        sb.Clear();
+                        /*
+                        var s1 = new ushort[len];
+                        var s2 = new ushort[len];
+
+                        for (ushort i = 0; i < len; i++)
+                            s1[i] = i;
+
+                        for (ushort i = 0; i < len; i++)
+                            s2[i] = s1[t[i]];
+
+                        for (ushort i = 0; i < len; i++)
+                            s1[i] = s2[t_i[i]];
+
+
+                        for (int i = 0; i < len; i++)
+                        {
+                            sb.Append(s1[i].ToString("D4") + " ");
+                            if (i % task.step == (task.step - 1))
+                                sb.AppendLine();
+                        }
+
+                        sb.AppendLine();
+                        File.WriteAllText($"results/table_transpose-{len}_{task.step}_{task.step2}_inv.txt", sb.ToString());*/
                     }
-
-                    var sb = new StringBuilder(t.Length << 2);
-                    for (int i = 0; i < t.Length; i++)
+                    catch (Exception e)
                     {
-                        sb.Append(t[i].ToString("D4") + " ");
-                        if (i % task.Number == (task.Number - 1))
-                            sb.AppendLine();
+                        Console.Error.WriteLine(e.Message + "\r\n" + e.StackTrace);
                     }
-
-                    sb.AppendLine();
-                    File.WriteAllText(fileName, sb.ToString());
-
-                    sb.Clear();
-                    if (task.Number != 200)
-                        return;
-
-
-                    var s1 = new ushort[t.Length];
-                    var s2 = new ushort[t.Length];
-
-                    for (ushort i = 0; i < t.Length; i++)
-                        s1[i] = i;
-
-                    for (ushort i = 0; i < t.Length; i++)
-                        s2[i] = s1[transpose200_3200[i]];
-
-                    for (ushort i = 0; i < t.Length; i++)
-                        s1[i] = s2[transpose200_3200[i]];
-
-
-                    for (int i = 0; i < t.Length; i++)
-                    {
-                        sb.Append(s1[i].ToString("D4") + " ");
-                        if (i % task.Number == (task.Number - 1))
-                            sb.AppendLine();
-                    }
-
-                    sb.AppendLine();
-                    File.WriteAllText("results/transpose-200-200.txt", sb.ToString());
                 }
             );  // The end of Parallel.foreach sources running
         }
