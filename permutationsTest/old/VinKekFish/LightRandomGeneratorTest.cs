@@ -27,10 +27,10 @@ namespace permutationsTest
         public void StartTests()
         {
             const int ModNumber = 4;
-            const int Count     = 4096;
-            // const int Count     = 1024*1024;
+            // const int Count     = 4096;
+            const int Count     = 1024*1024;
             counts = new int[ModNumber];
-goto End;   // TODO: УБрать это при тестах
+ // goto End;   // TODO: УБрать это при тестах
             for (int i = 0; i < counts.Length; i++)
                 counts[i] = 0;
 
@@ -95,6 +95,41 @@ goto End;   // TODO: УБрать это при тестах
                 File.WriteAllText(@"Z:/LightRandomGeneratorTest_nowait.txt", sb.ToString() + "\r\n\r\n" + l.GeneratedBytes.ToString(64*1024));
 
                 Save2ToBitmap(Count, len, a, @"Z:\LightRandomGeneratorTest_nowait.bmp");
+            }
+
+            for (int i = 0; i < counts.Length; i++)
+                counts[i] = 0;
+
+            using (var l = new LightRandomGenerator_forTests(Count))
+            {
+                //l.doWaitR = false;
+                //l.doWaitW = false;
+                l.WaitForGenerator();
+                Thread.Sleep(2000);
+                //l.doWaitR = true;
+                //l.doWaitW = true;
+
+                var len = l.GeneratedBytes.len;
+                var a   = l.GeneratedBytes.array;
+
+                lock (this)
+                for (int i = 0; i < len; i++)
+                {
+                    var mod = a[i] % ModNumber;
+                    counts[mod]++;
+                    a[i] = (byte) mod;
+                }
+
+                var sb = new StringBuilder(ModNumber * 256);
+                for (int i = 0; i < ModNumber; i++)
+                    sb.AppendLine(counts[i].ToString("D4"));
+
+                task.error.Add(new Error() { Message = sb.ToString() });
+
+                lock (l)
+                File.WriteAllText(@"Z:/LightRandomGeneratorTest_forTests_wait.txt", sb.ToString() + "\r\n\r\n" + l.GeneratedBytes.ToString(64*1024));
+
+                Save2ToBitmap(Count, len, a, @"Z:\LightRandomGeneratorTest_forTests_wait.bmp");
             }
 
             for (int i = 0; i < counts.Length; i++)
