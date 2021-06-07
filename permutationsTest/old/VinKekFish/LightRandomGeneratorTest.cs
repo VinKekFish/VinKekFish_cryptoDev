@@ -197,7 +197,7 @@ namespace permutationsTest
                 Save2ToBitmap(Count, a.len, a, @"Z:\LightRandomGeneratorTest_keccak.bmp");
                 a.Dispose();
             }
-End:
+// End:
             for (int i = 0; i < counts.Length; i++)
                 counts[i] = 0;
 
